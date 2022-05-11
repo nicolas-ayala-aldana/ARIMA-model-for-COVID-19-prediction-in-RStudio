@@ -1,0 +1,117 @@
+---
+title: "arima"
+author: "Nicolas Ayala"
+date: "02-05-2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+
+```{r}
+#https://jtr13.github.io/cc19/time-series-modeling-with-arima-in-r.html
+#https://rpubs.com/riazakhan94/arima_with_example
+require(tidyverse)
+require(tidymodels)
+require(data.table)
+require(tidyposterior)
+require(tsibble)  #tsibble for time series based on tidy principles
+require(fable)  #for forecasting based on tidy principles
+require(ggfortify)  #for plotting timeseries
+require(forecast)  #for forecast function
+require(tseries)
+require(chron)
+require(lubridate)
+require(directlabels)
+require(zoo)
+require(lmtest)
+require(TTR)  #for smoothing the time series
+require(MTS)
+require(vars)
+require(fUnitRoots)
+require(lattice)
+require(grid)
+
+```
+
+```{r}
+#https://dadescovid.cat/descarregues?lang=cas
+#Import dataset.
+library(readr)
+municipi <- read_delim("casos_municipi.csv", delim = ";", escape_double = FALSE, col_types = cols(TIPUSCASDATA = col_date(format = "%d/%m/%Y")), trim_ws = TRUE)
+municipi= as.data.frame(municipi)
+
+library(dplyr)
+
+martorell.town= municipi%>% filter(MUNICIPIDESCRIPCIO== "MARTORELL")
+martorell.town
+
+##Summarise per date
+martorell.town <-martorell.town %>%group_by(TIPUSCASDATA) %>%
+summarise(TOTCASOS = sum(NUMCASOS))
+
+
+#Rename cols (7 cols)
+colnames(martorell.town)<-c("date","total_cases")
+
+#head of Dataframe
+martorell.town
+
+#Order by week
+#martorell.town.7<-martorell.town %>% group_by(week = cut(date,"week")) %>% summarise(value = sum(total_cases))
+#martorell.town.7
+```
+
+```{r}
+
+library(lubridate)
+#martorell.town.7.70= martorell.town.7[1:70,]
+martorell.town.500=martorell.town[1:500,]
+
+ts.martorell= ts(martorell.town.500$total_cases, 
+                 frequency = 365 , 
+                 start= decimal_date(ymd("2020-03-01")))
+
+plot(ts.martorell)
+plot(diff(ts.martorell),ylab='Differenced Textile Sold')
+plot(log10(ts.martorell),ylab='Log (Number of Textile sold)')
+plot(diff(log10(ts.martorell),ylab='Differenced Log (Number of Textile sold'))
+
+library(tseries)
+adf.test(diff(log(ts.martorell)), alternative="stationary", k=0)
+acf(diff(log(ts.martorell)))
+pacf(diff(log(ts.martorell)))
+
+```
+
+```{r}
+#https://otexts.com/fpp2/non-seasonal-arima.html
+
+fitARIMA <- auto.arima(diff(log(ts.martorell)), seasonal= F)
+fitARIMA
+
+(fit <- arima(diff(log(ts.martorell)), c(5,0,2)))
+
+```
+
+
+```{r}
+plot(as.ts(diff(log(ts.martorell))) )
+lines(fitted(fitARIMA), col="red")
+
+futurVal <- forecast(fitARIMA,h=50, level=c(99)) #confidence level 99%
+plot(forecast(futurVal))
+plot(forecast(fit, h=50))
+autoplot(fit)
+
+checkresiduals(fit)
+
+```
